@@ -21,45 +21,24 @@ use yii\base\InvalidConfigException;
  */
 class LayDate extends InputWidget
 {
+    public $clientOptions = [];
 
-    /**
-     * @var boolean If true, shows the widget as an inline calendar and the input as a hidden field.
-     */
-    public $inline = false;
-
-    public $containerOptions = [];
-
-    public $clientDatetimeFormat;
-
-    /**
-     * @var string the model attribute that this widget is associated with.
-     * The value of the attribute will be converted using [[\yii\i18n\Formatter::asDate()|`Yii::$app->formatter->asDate()`]]
-     * with the [[dateFormat]] if it is not null.
-     */
-    public $attribute;
-
-    /**
-     * @var string the input value.
-     * This value will be converted using [[\yii\i18n\Formatter::asDate()|`Yii::$app->formatter->asDate()`]]
-     * with the [[dateFormat]] if it is not null.
-     */
-    public $value;
+    public $skin;
 
     /**
      * @var string php datetime Format
      */
-    public $datetimeFormat = 'Y-m-d H:i:s';
+    public $datetimeFormat = 'Y-m-d';
 
     /**
      * @var array
      */
     protected $datetimeMapping = [
-        "Y-m-d" => 'yyyy-mm-dd', // 2014-05-14 13:55
-        "Y-m-d H:i" => 'yyyy-mm-dd hh:ii', // 2014-05-14 13:55
-        "Y-m-d H:i:s" => 'yyyy-mm-dd hh:ii:ss', // 2014-05-14 13:55:50
+        "Y-m-d" => 'YYYY-MM-DD', // 2014-05-14 13:55
+        "Y-m-d H:i" => 'YYYY-MM-DD hh:mm', // 2014-05-14 13:55
+        "Y-m-d H:i:s" => 'YYYY-MM-DD hh:mm:ss', // 2014-05-14 13:55:50
     ];
 
-    public $clientOptions = [];
 
     /**
      * @inheritdoc
@@ -67,25 +46,18 @@ class LayDate extends InputWidget
     public function init()
     {
         parent::init();
-        if ($this->inline && !isset($this->containerOptions['id'])) {
-            $this->containerOptions['id'] = $this->options['id'] . '-container';
+        if (!isset ($this->options ['id'])) {
+            $this->options ['id'] = $this->getId();
         }
-        $this->options = ArrayHelper::merge([
-            'class' => 'form-control',
-        ], $this->options);
-
-        $this->clientDatetimeFormat = $this->clientDatetimeFormat ?: ArrayHelper::getValue(
+        $clientDatetimeFormat = ArrayHelper::getValue(
             $this->datetimeMapping,
             $this->datetimeFormat
         );
         $this->clientOptions = ArrayHelper::merge([
+            'elem' => '#' . $this->options ['id'],
             'event' => 'focus',
         ], $this->clientOptions);
-
-        if (!$this->clientDatetimeFormat) {
-            throw new InvalidConfigException('Please set datetime format');
-        }
-        $this->clientOptions['format'] = $this->clientDatetimeFormat;
+        $this->clientOptions['format'] = $clientDatetimeFormat;
     }
 
     /**
@@ -95,12 +67,11 @@ class LayDate extends InputWidget
     {
         echo $this->renderWidget() . "\n";
 
-        $containerID = $this->inline ? $this->containerOptions['id'] : $this->options['id'];
         LayDateAsset::register($this->view);
-        if(!isset($this->clientOptions['elem'])){
-            $this->clientOptions['elem'] = $this->options['id'];
-        }
         $options = Json::htmlEncode($this->clientOptions);
+        if ($this->skin) {
+            $this->view->registerJs("laydate.skin('{$this->skin}');");
+        }
         $this->view->registerJs("laydate({$options});");
     }
 
@@ -128,27 +99,12 @@ class LayDate extends InputWidget
         }
         $options = $this->options;
         $options['value'] = $value;
-
-        if ($this->inline === false) {
-            // render a text input
-            if ($this->hasModel()) {
-                $contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
-            } else {
-                $contents[] = Html::textInput($this->name, $value, $options);
-            }
+        // render a text input
+        if ($this->hasModel()) {
+            $contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
         } else {
-            // render an inline date picker with hidden input
-            if ($this->hasModel()) {
-                $contents[] = Html::activeHiddenInput($this->model, $this->attribute, $options);
-            } else {
-                $contents[] = Html::hiddenInput($this->name, $value, $options);
-            }
-            $this->clientOptions['initialDate'] = $value;
-            $this->clientOptions['linkField'] = $this->options['id'];
-            $this->clientOptions['linkFormat'] = $this->clientOptions['format'];
-            $contents[] = Html::tag('div', null, $this->containerOptions);
+            $contents[] = Html::textInput($this->name, $value, $options);
         }
-
         return implode("\n", $contents);
     }
 }
